@@ -72,7 +72,8 @@ main <- function() {
       write_csv(cell_data_mutated, temp_path)
       f <- synapser::File(temp_path, parent = args$outputSynapse)
     }
-    synStore(f)
+    synStore(f, used = "syn11378063",
+             executed = "https://github.com/Sage-Bionetworks/neurolincsdreamchallenge")
   }
 }
 
