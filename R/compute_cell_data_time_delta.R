@@ -43,7 +43,7 @@ mutate_delta_time <- function(cell_data) {
                                          XCoordinate,
                                          YCoordinate),
            distance = ifelse(is.na(ObjectTrackID), NA, distance)) %>% 
-    arrange(Experiment, ObjectTrackID, Well, TimePoint) %>% 
+    arrange(Experiment, Well, ObjectTrackID, TimePoint) %>% 
     select(-previousXCoordinate, -previousYCoordinate)
   return(cell_data_mutated)
 }
