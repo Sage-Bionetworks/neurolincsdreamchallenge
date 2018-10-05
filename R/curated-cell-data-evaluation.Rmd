@@ -1,0 +1,221 @@
+---
+title: "Curated Cell Data Evaluation"
+author: "Kenneth Daily"
+date: "`r date()`"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo=TRUE, message=FALSE, warning=FALSE)
+```
+
+```{r, include=TRUE, echo=FALSE}
+library(tidyverse)
+library(knitr)
+library(DT)
+library(synapser)
+
+syn <- synLogin(silent=TRUE)
+
+timepointthreshold <- 3
+```
+
+Get the data from the curated cell table.
+
+```{r, message=FALSE}
+curatedDataRes <- synTableQuery("select * from syn11378063") 
+curatedData <- curatedDataRes %>% as.data.frame() %>% tbl_df()
+```
+
+Get the list of encoded image masks uploaded to Synapse.
+
+```{r}
+imageMasksRes <- synTableQuery("select id,Experiment,Well,PID,parentId from syn11688505")
+imageMasks <- imageMasksRes %>% 
+  as.data.frame() %>%
+  tibble::as.tibble() %>% 
+  select(-ROW_ID, -ROW_VERSION, -ROW_ETAG)
+```
+
+Get metadata about the tracking datasets.
+
+```{r}
+trackingDatasetsRes <- synTableQuery("select * from syn11817859")
+trackingDatasets <- trackingDatasetsRes %>% as.data.frame() %>% tibble::as.tibble() %>% 
+  select(-ROW_ID, -ROW_VERSION) %>% 
+  mutate(CurationFiles=as.logical(CurationFiles),
+         CellMasks=as.logical(CellMasks),
+         AlignedImages=as.logical(AlignedImages)
+         )
+
+```
+
+```{r}
+trackingDatasets
+```
+
+Compare counts with respect to the dataset table for data that has been uploaded or marked as uploaded.
+
+```{r}
+trackingDatasets %>% 
+  left_join(imageMasks %>% count(Experiment) %>% rename(WellsImageMasks=n)) %>% 
+  left_join(curatedData %>% select(Experiment, Well) %>% 
+              group_by(Experiment) %>% 
+              summarize(WellsInCuratedData=n_distinct(Well))
+            ) %>% 
+  filter((WellsImageMasks > 0 | CellMasks), (WellsInCuratedData > 0 | CurationFiles)) %>% 
+  select(Experiment, Wells=NumberOfWells, WellsImageMasks, CuratedWells, WellsInCuratedData, everything())
+```
+
+
+Adjust the timepoints so they all start from 0. This is not necessarily safe if an entire experiment is missing at least one well with the minimum timepoint (e.g., 1 instead of 0).
+
+Filter data that has been manually curated (has a `ObjectTrackID`).
+
+```{r}
+minTimePoints <- curatedData %>% 
+  group_by(Experiment) %>% 
+  summarise(minTimePoint=min(TimePoint))
+
+curatedDataFixed <- curatedData %>% 
+  select(-ROW_ID, -ROW_VERSION) %>% 
+  left_join(minTimePoints) %>% 
+  mutate(XCoordinate=as.numeric(XCoordinate),
+         YCoordinate=as.numeric(YCoordinate),
+         TimePointAdjusted=TimePoint-minTimePoint,
+         Mistracked=as.logical(Mistracked),
+         Live_Cells=as.logical(Live_Cells),
+         Out_of_Focus=as.logical(Out_of_Focus),
+         Lost_Tracking=as.logical(Lost_Tracking)) %>% 
+    filter(!is.na(ObjectTrackID)) #,
+    #        !Mistracked, Live_Cells, 
+    #        !Out_of_Focus, !Lost_Tracking)
+```
+
+I would expect that anything that has been curated for an experiment/well combination (e.g, `ObjectTrackID` is not null) has an image mask file for it. This is the list of missing experiment/well image masks:
+
+```{r}
+curatedDataFixed %>% 
+  select(Experiment, Well) %>% 
+  distinct() %>% 
+  anti_join(., imageMasks  %>% select(Experiment, Well) %>% distinct()) %>% 
+  group_by(Experiment) %>% 
+  summarize(nMissingWells=n_distinct(Well), 
+            MissingWells=paste(Well, collapse=",")) %>% 
+  knitr::kable()
+```
+
+## Total data points
+
+Per experiment, how many tracked objects and timepoints are there?
+
+```{r}
+curatedDataFixed %>% 
+  group_by(Experiment) %>% 
+  summarize(`Data Points`=n())
+```
+
+### Distinct wells and curated objects
+
+Per experiment, how many wells were curated and how many objects total across time points?
+
+```{r, echo=FALSE}
+curatedDataFixed %>% group_by(Experiment) %>% 
+  mutate(`CuratedObjects`=paste0(Well, ObjectTrackID)) %>% 
+  summarise_at(vars(Well, CuratedObjects), n_distinct)
+```
+
+## Identify duplicates 
+
+These curated objects are in the same well, same timepoint and have the same `ObjectTrackId` but different coordinates.
+
+```{r message=FALSE, echo=FALSE, include=TRUE, eval=TRUE}
+dDuplicate <- curatedDataFixed %>% 
+  count(Experiment, ObjectTrackID, Well, TimePointAdjusted) %>% 
+  filter(n > 1) %>% 
+  arrange(Experiment, Well, ObjectTrackID, TimePointAdjusted)
+
+dDuplicate2 <- dDuplicate %>% 
+  left_join(curatedDataFixed) %>% 
+  arrange(Experiment, Well, ObjectTrackID, TimePointAdjusted) %>% 
+  select(Experiment, Well, ObjectTrackID, TimePointAdjusted, XCoordinate, YCoordinate, Live_Cells, everything())
+
+dDuplicate2
+```
+
+These are in the same `Experiment`, `Well`, and `TimePoint` and have the same `ObjectLabelsFound` but multiple `ObjectTrackID`s:
+
+```{r echo=FALSE}
+curatedDataFixed %>% 
+  group_by(Experiment, Well, TimePoint, ObjectLabelsFound) %>% 
+  summarize(n=n_distinct(ObjectTrackID)) %>% 
+  filter(n > 1)
+```
+
+
+```{r, message=FALSE, echo=FALSE, include=FALSE, eval=FALSE}
+## Identify objects across time
+curatedDataFixed %>% 
+  count(Experiment, Well, ObjectTrackID, TimePointAdjusted) %>% 
+  tidyr::spread(TimePointAdjusted, n) %>% 
+  arrange(Experiment, ObjectTrackID, Well) %>% 
+  select(Experiment, Well, ObjectTrackID, everything()) %>% 
+  DT::datatable()
+```
+
+## number of time points distribution
+
+```{r echo=FALSE, message=FALSE}
+dtmp2 <- curatedDataFixed %>% 
+  group_by(Experiment, ObjectTrackID, Well) %>% 
+  summarize(min_time=min(TimePointAdjusted), 
+            max_time=max(TimePointAdjusted), 
+            ntimepoints=n_distinct(TimePointAdjusted))
+```
+
+
+```{r echo=FALSE, message=FALSE}
+p <- ggplot(dtmp2) + geom_histogram(aes(x=ntimepoints), binwidth=1) 
+p <- p + facet_wrap(~ Experiment)
+p <- p + labs(x="Number of time points", y="Count")
+p <- p + theme_bw()
+p
+```
+
+```{r echo=FALSE, include=FALSE, eval=FALSE}
+## Objects with less than `r timepointthreshold` time points:
+dtmp2 %>% 
+  filter(ntimepoints < timepointthreshold) %>% 
+  select(Experiment, ObjectTrackID, Well, ntimepoints)
+```
+
+```{r echo=FALSE}
+nested_d <- curatedDataFixed %>% 
+  group_by(Experiment, ObjectTrackID, Well) %>%
+  arrange(TimePointAdjusted) %>% 
+  nest()
+
+nested_rle <- nested_d %>% 
+  mutate(rlenc=map(data, 
+                   function(x) rle(lead(x$TimePointAdjusted) - x$TimePointAdjusted)),
+         maxrunlength=map_int(rlenc, function(x) max(x$lengths))) %>% 
+  select(Experiment, ObjectTrackID, Well, maxrunlength) %>% 
+  arrange(-maxrunlength)
+```
+
+## Number of tracked objects with at least `r timepointthreshold` consecutive time points per experiment
+
+```{r message=FALSE}
+nested_rle %>% 
+  filter(maxrunlength >= timepointthreshold) %>%
+  group_by(Experiment) %>% 
+  mutate(`CuratedObjects`=paste0(Well, ObjectTrackID)) %>% 
+  summarise_at(vars(Well, CuratedObjects), n_distinct)
+```
+
+```{r}
+sessionInfo()
+```
+

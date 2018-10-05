@@ -1,0 +1,324 @@
+---
+title: "Tracking vs. Manual Curation"
+author: "Kenneth Daily"
+subtitle: "`r date()`"
+output: 
+  html_document: 
+    toc: yes
+  html_notebook: 
+    toc: yes
+---
+
+
+# Get data
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+knitr::opts_chunk$set(echo=TRUE, message=FALSE, warning=FALSE)
+
+library(synapser)
+library(tidyverse)
+library(ggplot2)
+library(DT)
+library(ggridges)
+
+foo <- capture.output(synLogin())
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+manuallyCuratedId <- 'syn11378063'
+# fileSynId <- 'syn10878942'
+# fileSynId <- 'syn10878998'
+# fileSynId <- 'syn11678427'
+# fileSynId <- 'syn11678505'
+#fileSynId <- 'syn11956881'
+fileSynId <- 'syn12084866'
+# fileSynId <- 'syn16779108'
+
+# Where things get stored to
+parentId <- "syn11612119"
+
+# synStore(File(rmarkdown::render("./tracking-summary.Rmd"), name="Tracking Summary", parentId="syn11612119", used=c(manuallyCuratedId, fileSynId)))
+
+```
+
+## Get the tracked data file (from [`r fileSynId`](https://www.synapse.org/#!Synapse:`r fileSynId`))
+
+```{r get-tracking-results, message=FALSE}
+o <- synGet(fileSynId)
+
+trackingResults <- readr::read_csv(o$path)
+
+# %>% 
+#   filter(!is.na(ObjectTrackID))
+
+```
+
+A summary:
+
+```{r summarize-tracking-results-1}
+trackingResults %>% summarize(rows=n(), objects=n_distinct(Experiment, Well, ObjectTrackID))
+```
+
+## Curated data
+
+Get manually curated data ([`r manuallyCuratedId`](https://www.synapse.org/#!Synapse:`r manuallyCuratedId`)) for experiments submitted.
+
+Remove manual curation note columns, and check if each object was manually curated (compare `ObjectLabelsFound` to `ObjectTrackID` - if they are different, then the object was manually curated at that time point).
+
+```{r get-curated-data}
+curatedDataRaw <- synTableQuery('select * from syn11378063')$asDataFrame() %>% 
+  tibble::as.tibble() %>% 
+  mutate(XCoordinate=as.numeric(XCoordinate),
+         YCoordinate=as.numeric(YCoordinate),
+         manualMatched=(ObjectLabelsFound == ObjectTrackID),
+         Live_Cells=as.logical(Live_Cells),
+         Lost_Tracking=as.logical(Lost_Tracking)
+         ) %>% 
+  filter(Experiment %in% unique(trackingResults$Experiment))
+
+curatedData <- curatedDataRaw %>% 
+  filter(!is.na(ObjectTrackID), !Lost_Tracking) %>%
+  select(-ROW_ID, -ROW_VERSION, -Live_Cells, -Mistracked, 
+         -Out_of_Focus, -Lost_Tracking) %>% 
+  distinct() # This shouldn't be required
+```
+
+A summary:
+
+```{r summarize-curated-data}
+curatedData %>% summarize(rows=n(), objects=n_distinct(Experiment, Well, ObjectTrackID))
+```
+
+# Munge
+
+## Determine experiments that didn't start at time 0.
+
+```{r get-min-timepoints}
+# Find min time point for each experiment
+# To adjust those that start at 1 instead of 0
+minTimePoints <- curatedData %>% 
+  group_by(Experiment) %>% 
+  summarise(minTimePoint=min(TimePoint))
+
+minTimePoints %>% filter(minTimePoint > 0)
+```
+
+## Adjust time point data
+
+To account for those experiments that didn't start at time point 0.
+
+```{r adjust-timepoints}
+curatedData <- curatedData %>% 
+    left_join(minTimePoints) %>% 
+  mutate(TimePointAdjusted=TimePoint-minTimePoint)
+
+trackingResults <- trackingResults %>% 
+    left_join(minTimePoints) %>% 
+  mutate(TimePointAdjusted=TimePoint-minTimePoint)
+
+```
+
+## Remove duplicates
+
+There are still some duplicates in the data, so remove these.
+
+```{r duplicates}
+duplicates <- curatedData %>% 
+  count(Experiment, Well, TimePointAdjusted, ObjectLabelsFound, ObjectTrackID) %>% 
+  filter(n > 1) %>% left_join(., curatedData) 
+
+duplicates %>% DT::datatable()
+
+duplicates %>% readr::write_csv(path="./duplicates.csv")
+
+```
+
+```{r remove-duplicates}
+# Get rid of duplicates
+curatedData <- curatedData %>% 
+  count(Experiment, Well, TimePointAdjusted, ObjectLabelsFound, ObjectTrackID) %>% 
+  filter(n > 1) %>% 
+  anti_join(curatedData, .)
+```
+
+A summary:
+
+```{r summarize-curated-data-2}
+curatedData %>% summarize(rows=n(), objects=n_distinct(Experiment, Well, ObjectTrackID))
+```
+
+## Remove objects where tracking started after T0
+
+Determine which objects didn't start tracking at time 0, and remove all of them (and all subsequent time points).
+
+```{r remove-after-t-zero}
+minTimeCurated <- curatedData %>%
+  # group_by(Experiment, Well, ObjectLabelsFound, ObjectTrackID) %>%
+  group_by(Experiment, Well, ObjectTrackID) %>%
+  summarize(mintime=min(TimePointAdjusted)) %>%
+  ungroup() %>% 
+  filter(mintime > 0)
+
+curatedData <- anti_join(curatedData, minTimeCurated)
+
+minTimeTracking <- trackingResults %>%
+  group_by(Experiment, Well, ObjectTrackID) %>%
+  summarize(mintime=min(TimePointAdjusted)) %>%
+  ungroup() %>% 
+  filter(mintime > 0)
+
+trackingResults <- anti_join(trackingResults, minTimeTracking)
+
+```
+
+```{r summarize-curated-data-3}
+curatedData %>% 
+  summarize(rows=n(), objects=n_distinct(Experiment, Well, ObjectTrackID))
+```
+
+```{r summarize-tracking-data-3}
+trackingResults %>% 
+  summarize(rows=n(), objects=n_distinct(Experiment, Well, ObjectTrackID))
+```
+
+## Merge
+
+This process is a `full_join` operation between the tracking provided by Young and the curated table provided by Jaslin, using the `Experiment`, `Well`, `TimePointAdjusted`, and `ObjectLabelsFound` columns.
+
+I then compute which are matches based on the submitted object ID (`ObjectTrackID.y`) and the manually curated object ID (`ObjectTrackID.x`) - e.g. count a match where `ObjectTrackID.x == ObjectTrackID.y`.
+
+All `NA` values for `matched` are made false - that is, if there was a manual curated value that the algorithm didn't find, or if the algorithm found something that the manual curation didn't.
+
+```{r merge-curated-and-tracked}
+merged <- full_join(curatedData, 
+                    trackingResults,
+                    by=c("Experiment"="Experiment", 
+                         "Well"="Well",
+                         "TimePointAdjusted"="TimePointAdjusted",
+                         "ObjectLabelsFound"="ObjectLabelsFound"))
+
+merged <- merged %>%
+  mutate(matched=ObjectTrackID.x == ObjectTrackID.y)
+
+merged$matched[is.na(merged$matched)] <- FALSE
+
+merged %>% 
+  readr::write_csv(path="./merge-curated-and-tracked.csv")
+
+mergedObj <- synStore(File("./merge-curated-and-tracked.csv", parentId=parentId), 
+                           forceVersion=FALSE)
+
+mergedObjId <- sprintf('%s.%s',
+                       mergedObj$properties$id,
+                       mergedObj$properties$versionNumber)
+
+```
+
+See the merged file in [`r mergedObjId`](https://https://synapse.org/#!Synapse:`r mergedObjId`).
+
+# Results
+
+We can define a 'tracking event' in two ways: at a single time point for a single cell in well of an experiment, or for all time points for a single cell in a well of an experiment.
+
+The first is performed by counting all matches and dividing by all cells/timepoints present in the data for an experiment (considers each possible tracking event for each cell and time point independently), or find entire tracks that are correct (no errors for a cell in an experiment at any time point) and count those, divided by the total number of cells present in the data for an experiment.
+
+### Tracking results per event
+
+Percentages per experiment, count each individual object/well/time point separately.
+
+```{r percentage-table-expt}
+pctTable <- merged %>% 
+  group_by(Experiment) %>% 
+  summarize(matches=sum(matched, na.rm=FALSE), 
+            total=n()) %>%
+  mutate(percentage=matches/total) %>% 
+  arrange(Experiment)
+
+pctTable
+```
+
+### Tracking results per track
+
+Successful tracking means all time points for a manually curated object/well are identified.
+
+```{r percentagetable-expt-well-object}
+# Some ObjectTrackID.x values are NA, meaning they were tracked automatically but not manually curated.
+# These are treated as mismatches.
+tblExptWellObj <- merged %>%  
+  group_by(Experiment, Well, ObjectTrackID.x) %>% 
+  summarize(matches=sum(matched, na.rm=TRUE), 
+            total=n()) %>%
+  mutate(percentage=matches/total) %>% 
+  arrange(Experiment, Well, ObjectTrackID.x) %>% 
+  ungroup()%>% 
+  mutate(errors=total-matches)
+```
+
+### Aggregated by `Experiment` + `Well`
+
+```{r results-aggregate-experiment-well}
+aggregateExperimentWell <- tblExptWellObj %>% 
+  group_by(Experiment, Well) %>% 
+  summarize(perfect=sum(percentage == 1), total=n()) %>% 
+  mutate(percentage=perfect/total) %>% 
+  arrange(Experiment, Well)
+
+aggregateExperimentWell %>% 
+  readr::write_csv(path = "./results-aggregate-experiment-well.csv")
+
+aggExptWellObj <- synStore(File("./results-aggregate-experiment-well.csv", parentId=parentId), 
+                           forceVersion=FALSE)
+
+aggExptWellObjId <- sprintf('%s.%s',
+                            aggExptWellObj$properties$id,
+                            aggExptWellObj$properties$versionNumber)
+```
+
+See the results aggregated to the Experiment + Well level in [`r aggExptWellObjId`](https://https://synapse.org/#!Synapse:`r aggExptWellObjId`).
+
+### Aggregated by `Experiment`
+
+```{r}
+tblExptWellObj %>% 
+  group_by(Experiment) %>% 
+  summarize(`perfect tracks`=sum(percentage == 1), total=n()) %>% 
+  mutate(percentage=`perfect tracks`/total) %>% 
+  arrange(Experiment)
+```
+
+```{r}
+tblExptWellObj %>% 
+  filter(!is.na(ObjectTrackID.x), errors > 0) %>% 
+  ggplot(., aes(x=errors)) + 
+    geom_density() + 
+    facet_wrap(~ Experiment)
+```
+
+```{r}
+tblExptWellObj %>% 
+  filter(!is.na(ObjectTrackID.x), errors > 0) %>% 
+  ggplot(aes(x=Experiment, y=total)) + geom_boxplot() + theme(axis.text.x=element_text(angle=90))
+```
+
+
+```{r}
+p <- tblExptWellObj %>% 
+  filter(!is.na(ObjectTrackID.x)) %>% 
+  ggplot(., aes(x=errors, y=Experiment)) + 
+    geom_density_ridges() + 
+    theme_ridges()
+```
+
+
+```{r}
+duplicatesObj <- synStore(File("./duplicates.csv", parentId=parentId), 
+                           forceVersion=FALSE)
+
+duplicatesObjId <- sprintf('%s.%s',
+                       duplicatesObj$properties$id,
+                       duplicatesObj$properties$versionNumber)
+
+```
+
+See duplicates in [`r duplicatesObjId`](https://https://synapse.org/#!Synapse:`r duplicatesObjId`).
+
