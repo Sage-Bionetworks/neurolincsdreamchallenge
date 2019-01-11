@@ -6,7 +6,12 @@ It is also an example of how to structure a CWL workflow to consume IDs from Syn
 
 ## Requirements
 
+See [requirements.txt](requirements.txt) for full listing.
+
 - Python 2.7 (due to Toil)
+- Toil
+- CWL
+- Synapse Python client
 
 ## Installation
 
