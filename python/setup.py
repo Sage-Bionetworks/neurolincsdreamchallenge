@@ -21,5 +21,5 @@ setup(name='neurolincsdreamchallenge',
           'synapseclient',
           'scikit-image'
       ],
-      scripts=['bin/get-image-layers.py'],
+      scripts=['bin/get-unique-objects.py'],
       zip_safe=False)
