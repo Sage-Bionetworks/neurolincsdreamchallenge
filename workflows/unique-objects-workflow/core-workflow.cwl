@@ -14,8 +14,8 @@ inputs:
     type: File
 
 steps:
-  get-image-layers:
-    run: get-image-layers.cwl
+  get-unique-objects:
+    run: get-unique-objects.cwl
     scatter: synapseid
     in:
       synapseid: message_array
@@ -28,5 +28,5 @@ outputs:
     type:
       type: array
       items: File
-    outputSource: get-image-layers/stdout
+    outputSource: get-unique-objects/stdout
 
