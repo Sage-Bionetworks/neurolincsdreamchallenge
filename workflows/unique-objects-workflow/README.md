@@ -19,7 +19,7 @@ See [requirements.txt](requirements.txt) for full listing.
 
 1.. Clone this repository.
 1. `pip install -r workflows/requirements.txt` to install requirements for running the workflow itself.
-1. `pip install git+https://www.github.com/Sage-Bionetworks/neurolincsdreamchallenge.git#egg=neurolincsdreamchallenge&subdirectory=python` (or, change to the [`python`](python/) directory and run `python setup.py install`).
+1. `pip install git+https://www.github.com/Sage-Bionetworks/neurolincsdreamchallenge.git#egg=neurolincsdreamchallenge&subdirectory=python` (or, change to the [`python`](../../python/) directory and run `python setup.py install`).
 
 ## Usage
 
