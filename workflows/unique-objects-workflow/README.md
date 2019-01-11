@@ -2,6 +2,8 @@
 
 This is a workflow to get unique ObjectLabelsFound from NeuroLINCS images.
 
+It is also an example of how to structure a CWL workflow to consume IDs from Synapse and run them in parallel using Toil.
+
 ## Requirements
 
 - Python 2.7 (due to Toil)
