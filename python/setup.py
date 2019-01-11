@@ -17,7 +17,9 @@ setup(name='neurolincsdreamchallenge',
       packages=['neurolincsdreamchallenge'],
       install_requires=[
           'pandas',
+          'numpy',
           'synapseclient'
+          'scikit-image'
       ],
       scripts=['bin/get-image-layers.py'],
       zip_safe=False)
