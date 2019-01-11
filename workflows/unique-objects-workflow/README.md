@@ -4,6 +4,8 @@ This is a workflow to get unique `ObjectLabelsFound` from NeuroLINCS image masks
 
 It is also an example of how to structure a CWL workflow to consume IDs from Synapse and run them in parallel using Toil.
 
+This uses the [scatter](https://www.commonwl.org/user_guide/23-scatter-workflow/) feature of CWL. This puts the burden of identifying the tasks to run outside of the CWL definition.
+
 ## Requirements
 
 See [requirements.txt](requirements.txt) for full listing.
