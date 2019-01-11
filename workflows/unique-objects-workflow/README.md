@@ -23,7 +23,7 @@ See [requirements.txt](requirements.txt) for full listing.
 
 ## Usage
 
-This specific workflow uses Synapse IDs obtained from a [Synapse File View](syn11688505) and uses the `Experiment` and `Well` columns to limit, as these are required by the [Python script](https://github.com/Sage-Bionetworks/neurolincsdreamchallenge/blob/master/python/bin/get-image-layers.py) that processes them.
+This specific workflow uses Synapse IDs obtained from a [Synapse File View](syn11688505) and uses the `Experiment` and `Well` columns to limit, as these are required by the [Python script](https://github.com/Sage-Bionetworks/neurolincsdreamchallenge/blob/master/python/bin/get-unique-objects.py) that processes them.
 
 1. Get a list of Synapse IDs to process. They will need to be added to a JSON-formatted file. This is one way to get the IDs in a way that can be copy-pasted into a JSON file:
     ``` shell
