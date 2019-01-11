@@ -1,0 +1,6 @@
+synapseConfig:
+  class: File
+  path: /home/kdaily/.synapseConfig
+message_array:
+  - syn11802300
+  - syn11802318
