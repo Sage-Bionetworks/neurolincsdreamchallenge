@@ -37,7 +37,7 @@ def main():
         
         df = pandas.concat([df, foo])
 
-    df[["Experiment", "TimePoint", "ObjectLabelsFound"]].to_csv("/dev/stdout", index=False)
+    df[["Experiment", "Well", "TimePoint", "ObjectLabelsFound"]].to_csv("/dev/stdout", index=False)
 
 if __name__ == "__main__":
     main()
