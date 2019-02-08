@@ -61,7 +61,7 @@ main <- function() {
     anti_join(bad_cells) %>% 
     arrange(Experiment, Well, ObjectTrackID, TimePoint) %>% 
     select(Experiment, Well, ObjectTrackID, TimePoint, dplyr::everything())
-  write_tsv(curated_cell_data_clean, "curated_cell_data_clean.tsv")
+  write_csv(curated_cell_data_clean, "curated_cell_data_clean.tsv")
 }
 
 main()
