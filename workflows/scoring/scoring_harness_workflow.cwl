@@ -33,9 +33,9 @@ steps:
   download_submission:
     run: download_submission_file.cwl
     in:
-      - id: submissionid
+      - id: submissionId
         source: "#submissionId"
-      - id: synapse_config
+      - id: synapseConfig
         source: "#synapseConfig"
     out:
       - id: filepath
