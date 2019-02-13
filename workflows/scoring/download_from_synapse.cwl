@@ -3,7 +3,11 @@
 
 cwlVersion: v1.0
 class: CommandLineTool
-baseCommand: python
+baseCommand: python3.6
+
+hints:
+  DockerRequirement:
+    dockerPull: sagebionetworks/synapsepythonclient
 
 inputs:
   - id: synapse_config
@@ -28,14 +32,22 @@ requirements:
           import synapseclient
           import argparse
           import os
-          parser = argparse.ArgumentParser()
-          parser.add_argument("-s", "--synapseid", required=True, help="Submission Id")
-          parser.add_argument("-c", "--synapse_config", required=True, help="Credentials file")
-          args = parser.parse_args()
-          syn = synapseclient.Synapse(configPath=args.synapse_config)
-          syn.login()
-          sub = syn.get(args.synapseid, downloadLocation=".")
-          os.rename(sub.path, "goldstandard.csv")
+
+          def read_args():
+              parser = argparse.ArgumentParser()
+              parser.add_argument("-s", "--synapseid", required=True, help="Submission Id")
+              parser.add_argument("-c", "--synapse_config", required=True, help="Credentials file")
+              args = parser.parse_args()
+              return(args)
+          
+          def main():
+              syn = synapseclient.Synapse(configPath=args.synapse_config)
+              syn.login()
+              sub = syn.get(args.synapseid, downloadLocation=".")
+              os.rename(sub.path, "goldstandard.csv")
+
+          if __name__ == '__main__':
+              main()
      
 outputs:
   - id: filepath

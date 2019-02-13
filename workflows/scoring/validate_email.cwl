@@ -4,7 +4,11 @@
 #
 cwlVersion: v1.0
 class: CommandLineTool
-baseCommand: python
+baseCommand: python3.6
+
+hints:
+  DockerRequirement:
+    dockerPull: sagebionetworks/synapsepythonclient
 
 inputs:
   - id: submissionid
@@ -39,34 +43,51 @@ requirements:
           import argparse
           import json
           import os
-          parser = argparse.ArgumentParser()
-          parser.add_argument("-s", "--submissionid", required=True, help="Submission ID")
-          parser.add_argument("-c", "--synapse_config", required=True, help="credentials file")
-          parser.add_argument("--status", required=True, help="Prediction File Status")
-          parser.add_argument("-i","--invalid", required=True, help="Invalid reasons")
 
-          args = parser.parse_args()
-          syn = synapseclient.Synapse(configPath=args.synapse_config)
-          syn.login()
+          def read_args():
+              parser = argparse.ArgumentParser()
+              parser.add_argument("-s", "--submissionid", required=True,
+                                  help="Submission ID")
+              parser.add_argument("-c", "--synapse_config", required=True,
+                                  help="credentials file")
+              parser.add_argument("--status", required=True,
+                                  help="Prediction File Status")
+              parser.add_argument("-i","--invalid", required=True,
+                                  help="Invalid reasons")
+              args = parser.parse_args()
+              return(args)
 
-          sub = syn.getSubmission(args.submissionid)
-          userid = sub.userId
-          evaluation = syn.getEvaluation(sub.evaluationId)
-          if args.status == "INVALID":
-            subject = "Submission to '%s' invalid!" % evaluation.name
-            message = ["Hello %s,\n\n" % syn.getUserProfile(userid)['userName'],
-                       "Your submission (%s) is invalid, below are the invalid reasons:\n\n" % sub.name,
-                       args.invalid,
-                       "\n\nSincerely,\nChallenge Administrator"]
-          else:
-            subject = "Submission to '%s' accepted!" % evaluation.name
-            message = ["Hello %s,\n\n" % syn.getUserProfile(userid)['userName'],
-                       "Your submission (%s) is valid!\n\n" % sub.name,
-                       "\nSincerely,\nChallenge Administrator"]
-          syn.sendMessage(
-            userIds=[userid],
-            messageSubject=subject,
-            messageBody="".join(message),
-            contentType="text/html")
+          def send_email(syn, submission_id, status, invalid_reasons):
+              sub = syn.getSubmission(submission_id)
+              user_id = sub.userId
+              evaluation = syn.getEvaluation(sub.evaluationId)
+              if status == "INVALID":
+                  subject = "Submission to {} invalid".format(evaluation.name)
+                  message = ["Hello {},\n\n".format(
+                                  syn.getUserProfile(user_id)['userName']),
+                             "Your submission ({}) is invalid, below are the "
+                             "invalid reasons:\n\n".format(sub.name),
+                             invalid_reasons,
+                             "\n\nSincerely,\nNeurolincs Challenge Administrator"]
+              else:
+                  subject = "Submission to {} accepted!".format(evaluation.name)
+                  message = ["Hello {},\n\n".format(
+                                  syn.getUserProfile(user_id)['userName']),
+                             "Your submission ({}) is valid!\n\n".format(sub.name),
+                             "\nSincerely,\nNeurolincs Challenge Administrator"]
+              syn.sendMessage(
+                userIds=[user_id],
+                messageSubject=subject,
+                messageBody="".join(message),
+                contentType="text/html")
+
+          def main():
+              args = read_args()
+              syn = synapseclient.Synapse(configPath=args.synapse_config)
+              syn.login()
+              send_email(syn, args.submissionid, args.status, args.invalid)
+
+          if __name__ == "__main__":
+              main()
           
 outputs: []

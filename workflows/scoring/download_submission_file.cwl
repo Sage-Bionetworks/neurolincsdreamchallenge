@@ -4,7 +4,11 @@
 #
 cwlVersion: v1.0
 class: CommandLineTool
-baseCommand: python
+baseCommand: python3.6
+
+hints:
+  DockerRequirement:
+    dockerPull: sagebionetworks/synapsepythonclient
 
 inputs:
   - id: submissionId
