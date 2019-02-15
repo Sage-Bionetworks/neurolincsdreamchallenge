@@ -11,9 +11,9 @@ hints:
     dockerPull: sagebionetworks/synapsepythonclient
 
 inputs:
-  - id: submissionid
+  - id: submissionId
     type: int
-  - id: synapse_config
+  - id: synapseConfig
     type: File
   - id: status
     type: string
@@ -22,9 +22,9 @@ inputs:
 
 arguments:
   - valueFrom: validation_email.py
-  - valueFrom: $(inputs.submissionid)
+  - valueFrom: $(inputs.submissionId)
     prefix: -s
-  - valueFrom: $(inputs.synapse_config.path)
+  - valueFrom: $(inputs.synapseConfig.path)
     prefix: -c
   - valueFrom: $(inputs.status)
     prefix: --status

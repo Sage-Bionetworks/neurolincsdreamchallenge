@@ -4,7 +4,11 @@
 #
 cwlVersion: v1.0
 class: CommandLineTool
-baseCommand: python
+baseCommand: python3.6
+
+hints:
+  DockerRequirement:
+    dockerPull: sagebionetworks/synapsepythonclient
 
 inputs:
   - id: submissionid
@@ -35,34 +39,40 @@ requirements:
           import argparse
           import json
           import os
-          parser = argparse.ArgumentParser()
-          parser.add_argument("-s", "--submissionid", required=True, help="Submission ID")
-          parser.add_argument("-c", "--synapse_config", required=True, help="credentials file")
-          parser.add_argument("-r","--results", required=True, help="Resulting scores")
 
-          args = parser.parse_args()
-          syn = synapseclient.Synapse(configPath=args.synapse_config)
-          syn.login()
+          def read_args():
+              parser = argparse.ArgumentParser()
+              parser.add_argument("-s", "--submissionid", required=True, help="Submission ID")
+              parser.add_argument("-c", "--synapse_config", required=True, help="credentials file")
+              parser.add_argument("-r","--results", required=True, help="Resulting scores")
+              args = parser.parse_args()
+              return(args)
 
-          sub = syn.getSubmission(args.submissionid)
-          userid = sub.userId
-          evaluation = syn.getEvaluation(sub.evaluationId)
-          with open(args.results) as json_data:
-            annots = json.load(json_data)
-          if annots.get('prediction_file_status') is None:
-            raise Exception("score.cwl must return prediction_file_status as a json key")
-          status = annots['prediction_file_status']
-          del annots['prediction_file_status']
-          if status == "SCORED":
-            subject = "Submission to '%s' scored!" % evaluation.name
-            message = ["Hello %s,\n\n" % syn.getUserProfile(userid)['userName'],
-                       "Your submission (%s) is scored, below are your results:\n\n" % sub.name,
-                       "\n".join([i + " : " + str(annots[i]) for i in annots]),
-                       "\n\nSincerely,\nChallenge Administrator"]
-            syn.sendMessage(
-              userIds=[userid],
-              messageSubject=subject,
-              messageBody="".join(message),
-              contentType="text/html")
-          
+          def send_email(syn, submission_id, annotations):
+              sub = syn.getSubmission(submission_id)
+              user_id = sub.userId
+              evaluation = syn.getEvaluation(sub.evaluationId)
+              with open(annotations) as json_data:
+                annots = json.load(json_data)
+              subject = "Submission to {} has been evaluated!".format(evaluation.name)
+              message = ["Hello {},\n\n".format(syn.getUserProfile(user_id)['userName']),
+                           "Your submission ({}) has been evaluated, ",
+                           "below are your results:\n\n".format(sub.name),
+                           "\n".join([i + " : " + str(annots[i]) for i in annots]),
+                           "\n\nSincerely,\nNeurolincs Administrator"]
+              syn.sendMessage(
+                userIds=[user_id],
+                messageSubject=subject,
+                messageBody="".join(message),
+                contentType="text/html")
+
+          def main():
+              args = read_args()
+              syn = synapseclient.Synapse(configPath=args.synapse_config)
+              syn.login()
+              send_email(syn, args.submissionid, args.results)
+
+          if __name__ == '__main__':
+              main()
+
 outputs: []

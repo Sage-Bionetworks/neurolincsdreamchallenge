@@ -54,9 +54,9 @@ steps:
   validation_email:
     run: validate_email.cwl
     in:
-      - id: submissionid
+      - id: submissionId
         source: "#submissionId"
-      - id: synapse_config
+      - id: synapseConfig
         source: "#synapseConfig"
       - id: status
         source: "#validation/status"
@@ -68,28 +68,24 @@ steps:
   annotate_validation_with_output:
     run: annotate_submission.cwl
     in:
-      - id: submissionid
+      - id: submissionId
         source: "#submissionId"
       - id: annotation_values
         source: "#validation/results"
-      - id: to_public
-        valueFrom: "true"
-      - id: force_change_annotation_acl
-        valueFrom: "true"
-      - id: synapse_config
+      - id: synapseConfig
         source: "#synapseConfig"
     out: []
 
-  #download_goldstandard:
-  #  run: download_from_synapse.cwl
-  #  in:
-  #    - id: synapseid
-  #      #This is a dummy syn id, replace when you use your own workflow
-  #      valueFrom: "syn18081597"
-  #    - id: synapse_config
-  #      source: "#synapseConfig"
-  #  out:
-  #    - id: filepath
+  download_goldstandard:
+    run: download_from_synapse.cwl
+    in:
+      - id: synapseid
+        #This is a dummy syn id, replace when you use your own workflow
+        valueFrom: "syn18081597"
+      - id: synapse_config
+        source: "#synapseConfig"
+    out:
+      - id: filepath
 
   scoring:
     run: score.cwl
@@ -98,34 +94,28 @@ steps:
         source: "#download_submission/filepath"
       - id: status 
         source: "#validation/status"
-      - id: goldstandard
-        source: "#download_goldstandard/filepath"
     out:
       - id: results
       
-  score_email:
-    run: score_email.cwl
-    in:
-      - id: submissionid
-        source: "#submissionId"
-      - id: synapse_config
-        source: "#synapseConfig"
-      - id: results
-        source: "#scoring/results"
-    out: []
+  #score_email:
+  #  run: score_email.cwl
+  #  in:
+  #    - id: submissionid
+  #      source: "#submissionId"
+  #    - id: synapse_config
+  #      source: "#synapseConfig"
+  #    - id: results
+  #      source: "#scoring/results"
+  #  out: []
 
   annotate_submission_with_output:
     run: annotate_submission.cwl
     in:
-      - id: submissionid
+      - id: submissionId
         source: "#submissionId"
       - id: annotation_values
         source: "#scoring/results"
-      - id: to_public
-        valueFrom: "true"
-      - id: force_change_annotation_acl
-        valueFrom: "true"
-      - id: synapse_config
+      - id: synapseConfig
         source: "#synapseConfig"
     out: []
  

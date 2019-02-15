@@ -12,20 +12,22 @@ hints:
     dockerPull: sagebionetworks/synapsepythonclient
 
 inputs:
-  - id: submissionid
+  - id: submissionId
     type: int
   - id: annotation_values
     type: File
   - id: to_public
     type: boolean 
+    default: true
   - id: force_change_annotation_acl
     type: boolean 
-  - id: synapse_config
+    default: true
+  - id: synapseConfig
     type: File
 
 arguments:
   - valueFrom: annotationSubmission.py
-  - valueFrom: $(inputs.submissionid)
+  - valueFrom: $(inputs.submissionId)
     prefix: -s
   - valueFrom: $(inputs.annotation_values)
     prefix: -v
@@ -33,7 +35,7 @@ arguments:
     prefix: -p
   - valueFrom: $(inputs.force_change_annotation_acl)
     prefix: -f
-  - valueFrom: $(inputs.synapse_config.path)
+  - valueFrom: $(inputs.synapseConfig.path)
     prefix: -c
 
 requirements:
@@ -167,10 +169,20 @@ requirements:
                     force_change_annotation_acl=force_change_annotation_acl)
               status = syn.store(status)
 
+          def update_status(syn, submission_id, annotation_values):
+              status = syn.getSubmissionStatus(submission_id)
+              with open(annotation_values, 'r') as f:
+                  annotations = json.load(f)
+              for k, v in annotations:
+                  if k == "prediction_file_status" and v != status["status"]:
+                      status['status'] = v
+                      syn.store(status)
+
           def main():
               args = read_args()
               syn = sc.Synapse(configPath=args.synapse_config)
               syn.login()
+              update_status(syn, args.submissionid, args.annotation_values)
               _with_retry(lambda: annotate_submission(
                                 syn, args.submissionid, args.annotation_values,
                                 to_public=args.to_public,

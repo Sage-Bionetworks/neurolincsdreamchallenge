@@ -10,16 +10,16 @@ hints:
     dockerPull: sagebionetworks/synapsepythonclient
 
 inputs:
-  - id: synapse_config
+  - id: synapseConfig
     type: File
-  - id: synapseid
+  - id: synapseId
     type: string
 
 arguments:
   - valueFrom: download_synapse_file.py
-  - valueFrom: $(inputs.synapseid)
+  - valueFrom: $(inputs.synapseId)
     prefix: -s
-  - valueFrom: $(inputs.synapse_config.path)
+  - valueFrom: $(inputs.synapseConfig.path)
     prefix: -c
 
 requirements:
