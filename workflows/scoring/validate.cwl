@@ -13,11 +13,15 @@ hints:
 inputs:
   - id: inputfile
     type: File
+  - id: gold_standard
+    type: File
 
 arguments:
   - valueFrom: validate.py
-  - valueFrom: $(inputs.inputfile)
+  - valueFrom: $(inputs.inputfile.path)
     prefix: -s
+  - valueFrom: $(inputs.gold_standard.path)
+    prefix: --gold-standard
   - valueFrom: results.json
     prefix: -r
 
@@ -36,20 +40,26 @@ requirements:
                 parser = argparse.ArgumentParser()
                 parser.add_argument("-s", "--submission-file",
                                     required=True, help="Submission File")
+                parser.add_argument("--gold-standard",
+                                    required=True, help="Gold standard csv file")
                 parser.add_argument("-r", "--results",
                                     required=True, help="validation results")
                 args = parser.parse_args()
                 return(args)
             
-            def validate_submission(path):
+            def validate_submission(sub_path, gold_standard_path):
                 invalid_reasons = []
+                gold_standard = pd.read_csv(gold_standard_path)
                 try:
-                    sub = pd.read_csv(path, sep=None, engine="python")
+                    sub = pd.read_csv(sub_path, sep=None, engine="python")
                 except:
                     invalid_reasons.append("Submission is not readable as a tabular format. "
                                            "Did you submit the correct file and is that "
                                            "file in .csv or .tsv format?")
                     return invalid_reasons
+                if len(sub.Experiment.unique()) > 1:
+                    invalid_reasons.append("Only one unique Experiment value "
+                                           "is allowed per submission.")
                 mandatory_columns = ["Experiment", "ObjectLabelsFound", "ObjectTrackID",
                                      "Well", "TimePoint"]
                 if not all([c in sub.columns for c in mandatory_columns]):
@@ -62,11 +72,21 @@ requirements:
                 if largest_min_timepoint > 0:
                     invalid_reasons.append("The TimePoint of each tracked cell must "
                                            "start at 0.")
+                experiments = gold_standard.Experiment.unique()
+                incorrect_experiments = [e for e in sub.Experiment.unique()
+                                         if e not in experiments]
+                if len(incorrect_experiments):
+                    invalid_reasons.append(
+                            "The following experiments are not available for "
+                            "scoring: '{}'. The allowed experiments are: {}.".format(
+                                "', '".join(incorrect_experiments),
+                                ", ".join(experiments)))
                 return invalid_reasons
 
             def main():
                 args = read_args()
-                invalid_reasons = validate_submission(args.submission_file)
+                invalid_reasons = validate_submission(args.submission_file,
+                                                      args.gold_standard)
                 if len(invalid_reasons):
                     result = {'prediction_file_errors':"\n".join(invalid_reasons),
                               'prediction_file_status':"INVALID"}

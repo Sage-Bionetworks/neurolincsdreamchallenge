@@ -41,6 +41,7 @@ requirements:
               return(args)
           
           def main():
+              args = read_args()
               syn = synapseclient.Synapse(configPath=args.synapse_config)
               syn.login()
               sub = syn.get(args.synapseid, downloadLocation=".")
@@ -50,7 +51,7 @@ requirements:
               main()
      
 outputs:
-  - id: filepath
+  - id: gold_standard
     type: File
     outputBinding:
       glob: goldstandard.csv

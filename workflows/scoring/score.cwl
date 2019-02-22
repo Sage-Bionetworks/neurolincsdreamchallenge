@@ -4,11 +4,7 @@
 #
 cwlVersion: v1.0
 class: CommandLineTool
-baseCommand: python3.6
-
-hints:
-  DockerRequirement:
-    dockerPull: sagebionetworks/synapsepythonclient
+baseCommand: python
 
 inputs:
   - id: inputfile
@@ -22,7 +18,7 @@ arguments:
   - valueFrom: score.py
   - valueFrom: $(inputs.inputfile.path)
     prefix: -f
-  - valueFrom: $(inputs.gold_standard)
+  - valueFrom: $(inputs.gold_standard.path)
     prefix: --gold-standard
   - valueFrom: $(inputs.status)
     prefix: -s
@@ -46,21 +42,30 @@ requirements:
               parser.add_argument("--gold-standard", required=True, help = "Gold standard file")
               parser.add_argument("-s", "--status", required=True, help="Submission status")
               parser.add_argument("-r", "--results", required=True, help="Scoring results")
+              args = parser.parse_args()
               return(args)
 
           def main():
-              args = parser.parse_args()
+              args = read_args()
               if args.status == "VALIDATED":
-                  os.system("docker run sagebionetworks/neurolincsscoring "
-                            "--tracking_file {}, --curated_data_table {} ",
-                            "--json".format(args.submissionfile, args.gold_standard)
-                  prediction_file_status = "SCORED"
-                  result = {'prediction_file_status':prediction_file_status}
+                  os.system("docker run --rm neurolincsscoring "
+                            "--mount type=bind,source={},"
+                            "target=/root/sub.csv,readonly "
+                            "--mount type=bind,source={},"
+                            "target=/root/goldstandard.csv,readonly"
+                            "tracking_summary_perfect_tracks.R "
+                            "--tracking_file /root/sub.csv "
+                            "--curated_data_table /root/gold_standard.csv "
+                            "--json".format(args.submissionfile, args.gold_standard))
+                  result = {'prediction_file_status':"SCORED"}
               else:
                   result = {'prediction_file_status':args.status}
               with open(args.results, 'w') as o:
                   o.write(json.dumps(result))
      
+          if __name__ == '__main__':
+              main()
+
 outputs:
   - id: score
     type: stdout

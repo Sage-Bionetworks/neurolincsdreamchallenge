@@ -169,20 +169,10 @@ requirements:
                     force_change_annotation_acl=force_change_annotation_acl)
               status = syn.store(status)
 
-          def update_status(syn, submission_id, annotation_values):
-              status = syn.getSubmissionStatus(submission_id)
-              with open(annotation_values, 'r') as f:
-                  annotations = json.load(f)
-              for k, v in annotations:
-                  if k == "prediction_file_status" and v != status["status"]:
-                      status['status'] = v
-                      syn.store(status)
-
           def main():
               args = read_args()
               syn = sc.Synapse(configPath=args.synapse_config)
               syn.login()
-              update_status(syn, args.submissionid, args.annotation_values)
               _with_retry(lambda: annotate_submission(
                                 syn, args.submissionid, args.annotation_values,
                                 to_public=args.to_public,

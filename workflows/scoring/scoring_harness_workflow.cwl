@@ -41,11 +41,23 @@ steps:
       - id: filepath
       - id: entity
       
+  download_goldstandard:
+    run: download_from_synapse.cwl
+    in:
+      - id: synapseId
+        valueFrom: "syn18345738"
+      - id: synapseConfig
+        source: "#synapseConfig"
+    out:
+      - id: gold_standard
+
   validation:
     run: validate.cwl
     in:
       - id: inputfile
         source: "#download_submission/filepath"
+      - id: gold_standard
+        source: "#download_goldstandard/gold_standard"
     out:
       - id: results
       - id: status
@@ -76,37 +88,28 @@ steps:
         source: "#synapseConfig"
     out: []
 
-  download_goldstandard:
-    run: download_from_synapse.cwl
-    in:
-      - id: synapseid
-        #This is a dummy syn id, replace when you use your own workflow
-        valueFrom: "syn18081597"
-      - id: synapse_config
-        source: "#synapseConfig"
-    out:
-      - id: filepath
-
   scoring:
     run: score.cwl
     in:
       - id: inputfile
         source: "#download_submission/filepath"
+      - id: gold_standard
+        source: "#download_goldstandard/gold_standard"
       - id: status 
         source: "#validation/status"
     out:
       - id: results
       
-  #score_email:
-  #  run: score_email.cwl
-  #  in:
-  #    - id: submissionid
-  #      source: "#submissionId"
-  #    - id: synapse_config
-  #      source: "#synapseConfig"
-  #    - id: results
-  #      source: "#scoring/results"
-  #  out: []
+  score_email:
+    run: score_email.cwl
+    in:
+      - id: submissionid
+        source: "#submissionId"
+      - id: synapse_config
+        source: "#synapseConfig"
+      - id: results
+        source: "#scoring/results"
+    out: []
 
   annotate_submission_with_output:
     run: annotate_submission.cwl

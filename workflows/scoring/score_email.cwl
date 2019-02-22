@@ -44,16 +44,14 @@ requirements:
               parser = argparse.ArgumentParser()
               parser.add_argument("-s", "--submissionid", required=True, help="Submission ID")
               parser.add_argument("-c", "--synapse_config", required=True, help="credentials file")
-              parser.add_argument("-r","--results", required=True, help="Resulting scores")
+              parser.add_argument("-r", "--results", required=True, help="Resulting scores")
               args = parser.parse_args()
               return(args)
 
-          def send_email(syn, submission_id, annotations):
+          def send_email(syn, submission_id, annots):
               sub = syn.getSubmission(submission_id)
               user_id = sub.userId
               evaluation = syn.getEvaluation(sub.evaluationId)
-              with open(annotations) as json_data:
-                annots = json.load(json_data)
               subject = "Submission to {} has been evaluated!".format(evaluation.name)
               message = ["Hello {},\n\n".format(syn.getUserProfile(user_id)['userName']),
                            "Your submission ({}) has been evaluated, ",
@@ -68,9 +66,12 @@ requirements:
 
           def main():
               args = read_args()
-              syn = synapseclient.Synapse(configPath=args.synapse_config)
-              syn.login()
-              send_email(syn, args.submissionid, args.results)
+              with open(args.results, 'r') as f:
+                  results = json.load(f)
+              if results["prediction_file_status"] == "SCORED":
+                  syn = synapseclient.Synapse(configPath=args.synapse_config)
+                  syn.login()
+                  send_email(syn, args.submissionid, results)
 
           if __name__ == '__main__':
               main()
