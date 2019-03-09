@@ -108,6 +108,7 @@ fill_in_missing_timepoints <- function(curated_cell_data) {
 fill_in_missing_labels <- function(curated_cell_data_all_timepoints) {
   last_seen_alive <- curated_cell_data_all_timepoints %>%
     summarise(last_seen_alive = max(which(Live_Cells)) - 1)
+  # Move Lost_Tracking = TRUE to next TimePoint
   curated_cell_data_complete <- curated_cell_data_all_timepoints %>%
     left_join(last_seen_alive) %>%
     mutate(previous_live_cells = lag(Live_Cells),
@@ -120,28 +121,31 @@ fill_in_missing_labels <- function(curated_cell_data_all_timepoints) {
     mutate(Correct_Lost_Tracking = ifelse(!is.na(Lost_Tracking),
                                           ifelse(Lost_Tracking, FALSE, Correct_Lost_Tracking),
                                           Correct_Lost_Tracking))
+  # If last Lost_Tracking = TRUE, rest are true
+  # If last Lost_Tracking = FALSE, cell died or we are at end of measurement
   curated_cell_data_complete <- curated_cell_data_complete %>%
     tidyr::fill(., Correct_Lost_Tracking)
+  # If Lost_Tracking = TRUE, we don't know Live_Cells value
+  # Otherwise, if measurements stop unexpectedly, cell has died
   curated_cell_data_complete <- curated_cell_data_complete %>%
     mutate(Correct_Live_Cells = ifelse(is.na(Live_Cells),
                                        ifelse(!is.na(previous_lost_tracking),
                                               ifelse(previous_lost_tracking, NA, FALSE),
                                               Live_Cells),
                                        Live_Cells))
-           #Correct_Lost_Tracking = ifelse(is.na(previous_lost_tracking), Correct_Lost_Tracking,
-           #                       ifelse(previous_lost_tracking, T, Correct_Lost_Tracking)),
-           #Correct_Lost_Tracking = ifelse(is.na(Lost_Tracking),
-           #                               ifelse(TimePoint < last_seen_alive, T, Correct_Lost_Tracking),
-           #                               Correct_Lost_Tracking),
-           #Correct_Live_Cells = ifelse(is.na(Live_Cells),
-           #                            ifelse(is.na(Lost_Tracking),
-           #                                   ifelse(!previous_lost_tracking,
-           #                                          ifelse(TimePoint > last_seen_alive, F, Live_Cells),
-           #                                          Live_Cells),
-           #                                   Live_Cells),
-           #                            Live_Cells),
-           #Correct_Live_Cells = ifelse(TimePoint < last_seen_alive, T, Correct_Live_Cells))
-  # after fill, if Lost_Tracking is T, Live_Cells is NA (Unless seen alive later)
+  last_live_cell_value <- curated_cell_data_complete %>%
+    summarise(last_live_cell_value = reduce(Correct_Live_Cells, `&&`))
+  # Fill last recorded Live_Cell value to the end
+  curated_cell_data_complete <- curated_cell_data_complete %>%
+    left_join(last_live_cell_value) %>%
+    mutate(Correct_Live_Cells = ifelse(is.na(Correct_Live_Cells),
+                                       last_live_cell_value,
+                                       Correct_Live_Cells))
+  # reassign correct values and remove helper columns
+  curated_cell_data_complete <- curated_cell_data_complete %>%
+    mutate(Live_Cells = Correct_Live_Cells, Lost_Tracking = Correct_Lost_Tracking) %>%
+    select(-Correct_Live_Cells, -Correct_Lost_Tracking, -last_seen_alive,
+           -last_live_cell_value, -previous_live_cells, -previous_lost_tracking)
   return(curated_cell_data_complete)
 }
 
@@ -169,18 +173,10 @@ main <- function() {
     bind_rows(corrected_indices, potential_errors_corrected,
               zombie_cells_corrected, lost_tracking_corrected)
   curated_cell_data_all_timepoints <- fill_in_missing_timepoints(curated_cell_data_updated)
-  curated_cell_data_complete <- fill_in_missing_labels(curated_cell_data_all_timepoints)
-  #bad_cells <- curated_cell_data_updated %>%
-  #  group_by(Experiment, Well, ObjectTrackID) %>%
-  #  mutate(last_timepoint = max(TimePoint)) %>%
-  #  filter(TimePoint == last_timepoint, !Lost_Tracking, Live_Cells) %>%
-  #  select(Experiment, Well, ObjectTrackID)
-  #curated_cell_data_clean <- curated_cell_data_updated %>%
-  #  filter(!is.na(ObjectTrackID)) %>%
-  #  anti_join(bad_cells) %>%
-  #  arrange(Experiment, Well, ObjectTrackID, TimePoint) %>%
-  #  select(Experiment, Well, ObjectTrackID, TimePoint, dplyr::everything())
-  #write_csv(curated_cell_data_clean, "curated_cell_data_clean.csv", na = "")
+  curated_cell_data_complete <- fill_in_missing_labels(curated_cell_data_all_timepoints) %>%
+    select(Experiment, Well, ObjectTrackID, TimePoint,
+            Live_Cells, Lost_Tracking, dplyr::everything())
+  write_csv(curated_cell_data_complete, "clean_curated_cell_data.csv")
 }
 
-#main()
+main()
