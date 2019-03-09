@@ -162,8 +162,11 @@ requirements:
           def annotate_submission(syn, submissionid, annotation_values,
                                   to_public, force_change_annotation_acl):
               status = syn.getSubmissionStatus(submissionid)
-              with open(annotation_values) as json_data:
-                  annotation_json = json.load(json_data)
+              try:
+                  with open(annotation_values) as json_data:
+                      annotation_json = json.load(json_data)
+              except:
+                  annotation_json = dict()
               status = update_single_submission_status(
                     status, annotation_json, to_public=to_public,
                     force_change_annotation_acl=force_change_annotation_acl)

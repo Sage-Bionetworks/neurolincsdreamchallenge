@@ -15,7 +15,7 @@ inputs:
     type: int
   - id: synapse_config
     type: File
-  - id: results
+  - id: score
     type: File
 
 arguments:
@@ -24,9 +24,8 @@ arguments:
     prefix: -s
   - valueFrom: $(inputs.synapse_config.path)
     prefix: -c
-  - valueFrom: $(inputs.results)
-    prefix: -r
-
+  - valueFrom: $(inputs.score.path)
+    prefix: --score
 
 requirements:
   - class: InlineJavascriptRequirement
@@ -42,22 +41,39 @@ requirements:
 
           def read_args():
               parser = argparse.ArgumentParser()
-              parser.add_argument("-s", "--submissionid", required=True, help="Submission ID")
-              parser.add_argument("-c", "--synapse_config", required=True, help="credentials file")
-              parser.add_argument("-r", "--results", required=True, help="Resulting scores")
+              parser.add_argument("-s", "--submissionid",
+                                  required=True, help="Submission ID")
+              parser.add_argument("-c", "--synapse_config",
+                                  required=True, help="credentials file")
+              parser.add_argument("--score", required=True, help="Resulting scores")
               args = parser.parse_args()
               return(args)
 
-          def send_email(syn, submission_id, annots):
+          def send_email(syn, submission_id, scoring_results):
               sub = syn.getSubmission(submission_id)
               user_id = sub.userId
               evaluation = syn.getEvaluation(sub.evaluationId)
-              subject = "Submission to {} has been evaluated!".format(evaluation.name)
-              message = ["Hello {},\n\n".format(syn.getUserProfile(user_id)['userName']),
-                           "Your submission ({}) has been evaluated, ",
-                           "below are your results:\n\n".format(sub.name),
-                           "\n".join([i + " : " + str(annots[i]) for i in annots]),
-                           "\n\nSincerely,\nNeurolincs Administrator"]
+              if scoring_results["status"] == "INVALID":
+                  subject = "Submission to {} invalid".format(evaluation.name)
+                  if isinstance(scoring_results["invalid_reasons"], list): 
+                      invalid_reasons = "\n".join(scoring_results["invalid_reasons"])
+                  else:
+                      invalid_reasons = scoring_results["invalid_reasons"]
+                  message = ["Hello {},\n\n".format(
+                                  syn.getUserProfile(user_id)['userName']),
+                             "Your submission ({}) is invalid. ".format(sub.name), 
+                             "below are the invalid reasons:\n\n",
+                             invalid_reasons,
+                             "\n\nSincerely,\nNeurolincs Challenge Administrator"]
+              else:
+                  subject = "Submission to {} has been evaluated!".format(evaluation.name)
+                  message = ["Hello {},\n\n".format(syn.getUserProfile(user_id)['userName']),
+                               "Your submission ({}) has been evaluated, ".format(sub.name),
+                               "below are your results:\n\n",
+                               "\n".join([i + " : " + 
+                                          str(scoring_results["results"][i])
+                                          for i in scoring_results["results"]]),
+                               "\n\nSincerely,\nNeurolincs Administrator"]
               syn.sendMessage(
                 userIds=[user_id],
                 messageSubject=subject,
@@ -66,12 +82,11 @@ requirements:
 
           def main():
               args = read_args()
-              with open(args.results, 'r') as f:
-                  results = json.load(f)
-              if results["prediction_file_status"] == "SCORED":
-                  syn = synapseclient.Synapse(configPath=args.synapse_config)
-                  syn.login()
-                  send_email(syn, args.submissionid, results)
+              with open (args.score, "r") as f:
+                  score = json.load(f)
+              syn = synapseclient.Synapse(configPath=args.synapse_config)
+              syn.login()
+              send_email(syn, args.submissionid, score)
 
           if __name__ == '__main__':
               main()

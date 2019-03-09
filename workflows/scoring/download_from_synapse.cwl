@@ -44,8 +44,8 @@ requirements:
               args = read_args()
               syn = synapseclient.Synapse(configPath=args.synapse_config)
               syn.login()
-              sub = syn.get(args.synapseid, downloadLocation=".")
-              os.rename(sub.path, "goldstandard.csv")
+              f = syn.get(args.synapseid, downloadLocation=".")
+              os.rename(f.path, "goldstandard.csv")
 
           if __name__ == '__main__':
               main()

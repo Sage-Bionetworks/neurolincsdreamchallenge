@@ -91,7 +91,7 @@ requirements:
                     result = {'prediction_file_errors':"\n".join(invalid_reasons),
                               'prediction_file_status':"INVALID"}
                 else:
-                    result = {'prediction_file_errors':None,
+                    result = {'prediction_file_errors':"null",
                               'prediction_file_status':"VALIDATED"}
                 with open(args.results, 'w') as o:
                   o.write(json.dumps(result))
