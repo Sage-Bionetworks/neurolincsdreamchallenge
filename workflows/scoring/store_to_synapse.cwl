@@ -55,11 +55,11 @@ requirements:
                 if score["status"] == "SCORED":
                     f = synapseclient.File(path, parent)
                     f = syn.store(f)
-                    result = {'results_per_well': f['id'],
+                    result = {'results': f['id'],
                               'status': "SCORED",
                               'invalid_reasons': "null"}
                 else:
-                    result = {"results_per_well": "null",
+                    result = {"results": "null",
                               "status": score["status"],
                               "invalid_reasons": status["invalid_reasons"]}
                 return(result)
@@ -85,4 +85,4 @@ outputs:
     outputBinding:
       glob: results.json
       loadContents: true
-      outputEval: $(JSON.parse(self[0].contents)['results_per_well'])
+      outputEval: $(JSON.parse(self[0].contents)['results'])
