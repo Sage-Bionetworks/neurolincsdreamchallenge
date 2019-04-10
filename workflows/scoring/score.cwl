@@ -15,13 +15,20 @@ inputs:
     type: File
   - id: gold_standard
     type: File
+  - id: write_output_to_file
+    type: string
+    default: "results.json"
 
 arguments:
   - valueFrom: $(inputs.inputfile.path)
     prefix: --tracking_file
   - valueFrom: $(inputs.gold_standard.path)
     prefix: --curated_data_table
+  - valueFrom: $(inputs.write_output_to_file)
+    prefix: --write_output_to_file
 
 outputs:
   - id: score
-    type: stdout
+    type: File
+    outputBinding:
+      glob: results.json
