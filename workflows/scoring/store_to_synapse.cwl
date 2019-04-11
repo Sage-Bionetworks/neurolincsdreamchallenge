@@ -61,13 +61,9 @@ requirements:
                 if score["status"] == "SCORED":
                     f = synapseclient.File(clean_score, parent)
                     f = syn.store(f)
-                    result = {'results': f['id'],
-                              'status': "SCORED",
-                              'invalid_reasons': "null"}
+                    result = {'results': f['id']}
                 else:
-                    result = {"results": "null",
-                              "status": score["status"],
-                              "invalid_reasons": status["invalid_reasons"]}
+                    result = {"results": "null"}
                 return(result)
             
             def main():

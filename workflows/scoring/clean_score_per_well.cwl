@@ -39,7 +39,10 @@ requirements:
             def clean_score(score):
                 with open(score, "r") as f:
                     score_dic = json.load(f)
-                clean_score = pd.DataFrame(score_dic["results"])
+                if score_dic['status'] == "SCORED":
+                    clean_score = pd.DataFrame(score_dic["results"])
+                else:
+                    clean_score = pd.DataFrame()
                 return clean_score
 
             def main():
