@@ -60,6 +60,49 @@ steps:
         source: "#download_goldstandard/gold_standard"
     out:
       - id: score
+
+  scoring_per_well:
+    run: score_per_well.cwl
+    in: 
+      - id: inputfile
+        source: "#download_submission/filepath"
+      - id: gold_standard
+        source: "#download_goldstandard/gold_standard"
+    out:
+      - id: score
+
+  clean_score_per_well:
+    run: clean_score_per_well.cwl
+    in:
+      - id: score
+        source: "#scoring_per_well/score"
+    out:
+      - id: clean_score
+      
+  store_score:
+    run: store_to_synapse.cwl
+    in:
+      - id: score
+        source: "#scoring_per_well/score"
+      - id: clean_score
+        source: "#clean_score_per_well/clean_score"
+      - id: parent
+        source: "#submitterUploadSynId"
+      - id: synapse_config
+        source: "#synapseConfig"
+    out:
+      - id: results
+      - id: id
+
+  merge_scores:
+    run: merge_scores.cwl
+    in:
+      - id: score
+        source: "#scoring/score"
+      - id: synapse_id
+        source: "#store_score/id"
+    out:
+      - id: merged_score
       
   score_email:
     run: score_email.cwl
@@ -69,7 +112,7 @@ steps:
       - id: synapse_config
         source: "#synapseConfig"
       - id: score
-        source: "#scoring/score"
+        source: "#merge_scores/merged_score"
     out: []
 
   annotate_submission_with_output:
@@ -78,7 +121,7 @@ steps:
       - id: submissionId
         source: "#submissionId"
       - id: annotation_values
-        source: "#scoring/score"
+        source: "#merge_scores/merged_score"
       - id: synapseConfig
         source: "#synapseConfig"
     out: []

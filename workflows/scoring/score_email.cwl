@@ -73,6 +73,9 @@ requirements:
                                "\n".join([i + " : " + 
                                           str(scoring_results["results"][i])
                                           for i in scoring_results["results"]]),
+                               "\n\nYour results per well can be found here: ",
+                               "https://synapse.org/#!Synapse:{}".format(
+                                 scoring_results["results_per_well"]),
                                "\n\nSincerely,\nNeurolincs Administrator"]
               syn.sendMessage(
                 userIds=[user_id],
