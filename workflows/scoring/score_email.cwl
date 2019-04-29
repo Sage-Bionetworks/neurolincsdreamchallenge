@@ -76,6 +76,9 @@ requirements:
                                "\n\nYour results per well can be found here: ",
                                "https://synapse.org/#!Synapse:{}".format(
                                  scoring_results["results_per_well"]),
+                               "\nYour results per object can be found here: ",
+                               "https://synapse.org/#!Synapse:{}".format(
+                                 scoring_results["results_per_object"]),
                                "\n\nSincerely,\nNeurolincs Administrator"]
               syn.sendMessage(
                 userIds=[user_id],

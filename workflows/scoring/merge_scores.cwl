@@ -13,15 +13,19 @@ hints:
 inputs:
   - id: score
     type: File
-  - id: synapse_id
+  - id: synapse_id_per_well
+    type: string
+  - id: synapse_id_per_object
     type: string
 
 arguments:
   - valueFrom: merge_scores.py
   - valueFrom: $(inputs.score.path)
     prefix: --score
-  - valueFrom: $(inputs.synapse_id)
-    prefix: --synapse-id
+  - valueFrom: $(inputs.synapse_id_per_well)
+    prefix: --synapse-id-per-well
+  - valueFrom: $(inputs.synapse_id_per_object)
+    prefix: --synapse-id-per-object
 
 requirements:
   - class: InlineJavascriptRequirement
@@ -36,19 +40,24 @@ requirements:
             def read_args():
                 parser = argparse.ArgumentParser()
                 parser.add_argument("--score", required=True)
-                parser.add_argument("--synapse-id", required=True)
+                parser.add_argument("--synapse-id-per-well", required=True)
+                parser.add_argument("--synapse-id-per-object", required=True)
                 args = parser.parse_args()
                 return(args)
 
-            def merge_scores(score, synapse_id):
+            def merge_scores(score, synapse_id_per_well, synapse_id_per_object):
                 with open(score, "r") as f:
                     score_dic = json.load(f)
-                score_dic['results_per_well'] = synapse_id
+                score_dic["results_per_well"] = synapse_id_per_well
+                score_dic["results_per_object"] = synapse_id_per_object
                 return score_dic
 
             def main():
                 args = read_args()
-                score = merge_scores(args.score, args.synapse_id)
+                print(args.synapse_id_per_object)
+                print(args.synapse_id_per_well)
+                score = merge_scores(args.score, args.synapse_id_per_well,
+                                     args.synapse_id_per_object)
                 with open("results.json", "w") as o:
                   o.write(json.dumps(score))
             

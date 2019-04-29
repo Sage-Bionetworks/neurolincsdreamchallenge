@@ -1,6 +1,6 @@
 #!/usr/bin/env cwl-runner
 #
-# Put score per well in csv format
+# Put a json-formatted score into tabular format
 #
 cwlVersion: v1.0
 class: CommandLineTool
@@ -13,17 +13,21 @@ hints:
 inputs:
   - id: score
     type: File
+  - id: output_path
+    type: string
 
 arguments:
-  - valueFrom: clean_score_per_well.py
+  - valueFrom: clean_score_per_blank.py
   - valueFrom: $(inputs.score.path)
     prefix: --score
+  - valueFrom: $(inputs.output_path)
+    prefix: --output-path
 
 requirements:
   - class: InlineJavascriptRequirement
   - class: InitialWorkDirRequirement
     listing:
-      - entryname: clean_score_per_well.py
+      - entryname: clean_score_per_blank.py
         entry: |
             #!/usr/bin/env python
             import pandas as pd
@@ -33,6 +37,7 @@ requirements:
             def read_args():
                 parser = argparse.ArgumentParser()
                 parser.add_argument("--score", required=True)
+                parser.add_argument("--output-path", required=True)
                 args = parser.parse_args()
                 return(args)
 
@@ -48,7 +53,7 @@ requirements:
             def main():
                 args = read_args()
                 score = clean_score(args.score)
-                score.to_csv("results.csv", index = False)
+                score.to_csv(args.output_path, index = False)
             
             if __name__ == "__main__":
                 main()
@@ -57,4 +62,4 @@ outputs:
   - id: clean_score
     type: File
     outputBinding:
-      glob: results.csv
+      glob: $(inputs.output_path)

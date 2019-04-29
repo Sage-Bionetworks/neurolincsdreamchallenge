@@ -15,6 +15,9 @@ inputs:
     type: File
   - id: gold_standard
     type: File
+  - id: per_object
+    type: boolean
+    default: true
   - id: only_tracked
     type: boolean
     default: true
@@ -27,6 +30,8 @@ arguments:
     prefix: --tracking_file
   - valueFrom: $(inputs.gold_standard.path)
     prefix: --curated_data_table
+  - valueFrom: $(inputs.per_object)
+    prefix: --per_object
   - valueFrom: $(inputs.only_tracked)
     prefix: --only_tracked
   - valueFrom: $(inputs.write_output_to_file)

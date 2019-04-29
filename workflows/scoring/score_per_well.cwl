@@ -18,6 +18,9 @@ inputs:
   - id: per_well
     type: boolean
     default: true
+  - id: only_tracked
+    type: boolean
+    default: true
   - id: write_output_to_file
     type: string
     default: "results.json"
@@ -29,6 +32,8 @@ arguments:
     prefix: --curated_data_table
   - valueFrom: $(inputs.per_well)
     prefix: --per_well
+  - valueFrom: $(inputs.only_tracked)
+    prefix: --only_tracked
   - valueFrom: $(inputs.write_output_to_file)
     prefix: --write_output_to_file
 

@@ -72,14 +72,16 @@ steps:
       - id: score
 
   clean_score_per_well:
-    run: clean_score_per_well.cwl
+    run: clean_score_per_blank.cwl
     in:
       - id: score
         source: "#scoring_per_well/score"
+      - id: output_path
+        valueFrom: "score_per_well.csv"
     out:
       - id: clean_score
-      
-  store_score:
+
+  store_score_per_well:
     run: store_to_synapse.cwl
     in:
       - id: score
@@ -93,14 +95,51 @@ steps:
     out:
       - id: results
       - id: id
+      
+  scoring_per_object:
+    run: score_per_object.cwl
+    in:
+      - id: inputfile
+        source: "#download_submission/filepath"
+      - id: gold_standard
+        source: "#download_goldstandard/gold_standard"
+    out:
+      - id: score
+      
+  clean_score_per_object:
+    run: clean_score_per_blank.cwl
+    in:
+      - id: score
+        source: "#scoring_per_object/score"
+      - id: output_path
+        valueFrom: "score_per_object.csv"
+    out:
+      - id: clean_score
+
+  store_score_per_object:
+    run: store_to_synapse.cwl
+    in:
+      - id: score
+        source: "#scoring_per_object/score"
+      - id: clean_score
+        source: "#clean_score_per_object/clean_score"
+      - id: parent
+        source: "#submitterUploadSynId"
+      - id: synapse_config
+        source: "#synapseConfig"
+    out:
+      - id: results
+      - id: id
 
   merge_scores:
     run: merge_scores.cwl
     in:
       - id: score
         source: "#scoring/score"
-      - id: synapse_id
-        source: "#store_score/id"
+      - id: synapse_id_per_well
+        source: "#store_score_per_well/id"
+      - id: synapse_id_per_object
+        source: "#store_score_per_object/id"
     out:
       - id: merged_score
       
