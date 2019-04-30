@@ -62,12 +62,14 @@ steps:
       - id: score
 
   scoring_per_well:
-    run: score_per_well.cwl
+    run: score.cwl
     in: 
       - id: inputfile
         source: "#download_submission/filepath"
       - id: gold_standard
         source: "#download_goldstandard/gold_standard"
+      - id: per_well
+        default: true
     out:
       - id: score
 
@@ -97,12 +99,14 @@ steps:
       - id: id
       
   scoring_per_object:
-    run: score_per_object.cwl
+    run: score.cwl
     in:
       - id: inputfile
         source: "#download_submission/filepath"
       - id: gold_standard
         source: "#download_goldstandard/gold_standard"
+      - id: per_object
+        default: true
     out:
       - id: score
       
