@@ -1,3 +1,7 @@
+#!/usr/bin/env Rscript 
+# Produce a "clean" curated cell file with all potential timepoints
+# present and correct values for Live_Cells and Lost_Tracking columns
+
 library(synapser)
 library(tidyverse)
 
@@ -61,6 +65,13 @@ get_corrected_indices <- function() {
   return(corrected_indices)
 }
 
+#' Insert all potential timepoints for each experiment
+#'
+#' @param curated_cell_data A data.frame containing records from
+#' the original curated cell data file (syn11378063)
+#' @param reference A Synapse table containing columns Experiment,
+#' TimePointBegin, and TimePointEnd
+#' @return data.frame with all possible timepoint values w.r.t. the experiment
 fill_in_missing_timepoints <- function(curated_cell_data, reference="syn11817859") {
   timepoint_reference <- fetch_syn_table(
     reference, c("Experiment", "TimePointBegin", "TimePointEnd")) %>%
@@ -88,6 +99,11 @@ fill_in_missing_timepoints <- function(curated_cell_data, reference="syn11817859
   return(curated_cell_data_full)
 }
 
+#' Fill in columns Live_Cells and Lost_Tracking
+#'
+#' @param curated_cell_data_all_timepoints The output from 
+#' \code{fill_in_missing_timepoints}
+#' @return A "clean" curated cell data.frame
 fill_in_missing_labels <- function(curated_cell_data_all_timepoints) {
   last_seen_alive <- curated_cell_data_all_timepoints %>%
     summarise(last_seen_alive = max(which(Live_Cells)) - 1)
