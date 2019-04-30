@@ -1,45 +1,7 @@
 library(synapser)
 library(tidyverse)
 
-fetch_syn_table <- function(syn_id, cols = "*") {
-  if (is.vector(cols)) {
-    cols <- paste(cols, collapse = ",")
-  }
-  table <- synTableQuery(paste("select", cols, "from", syn_id))
-  table_df <- table$asDataFrame() %>%
-    as_tibble()
-  if (has_name(table_df, "ObjectTrackID")) {
-    table_df <- table_df %>% mutate(ObjectTrackID = as.integer(ObjectTrackID))
-  }
-  if (has_name(table_df, "TimePoint")) {
-    table_df <- table_df %>% mutate(TimePoint = as.integer(TimePoint))
-  }
-  if (has_name(table_df, "Live_Cells")) {
-    table_df <- table_df %>% mutate(Live_Cells = as.logical(Live_Cells))
-  }
-  if (has_name(table_df, "Mistracked")) {
-    table_df <- table_df %>% mutate(Mistracked = as.logical(Mistracked))
-  }
-  if (has_name(table_df, "Lost_Tracking")) {
-    table_df <- table_df %>% mutate(Lost_Tracking = as.logical(Lost_Tracking))
-  }
-  if (has_name(table_df, "Out_of_Focus")) {
-    table_df <- table_df %>% mutate(Out_of_Focus = as.logical(Out_of_Focus))
-  }
-  if (has_name(table_df, "XCoordinate")) {
-    table_df <- table_df %>% mutate(XCoordinate = as.numeric(XCoordinate))
-  }
-  if (has_name(table_df, "YCoordinate")) {
-    table_df <- table_df %>% mutate(YCoordinate = as.numeric(YCoordinate))
-  }
-  table_df <- table_df %>% select(-ROW_ID, -ROW_VERSION)
-  return(as_tibble(table_df))
-}
-
-fetch_syn_csv <- function(syn_id) {
-  f <- synGet(syn_id)
-  df <- read_csv(f$path) %>%
-    as_tibble()
+correct_types <- function(df) {
   if (has_name(df, "ObjectTrackID")) {
     df <- df %>% mutate(ObjectTrackID = as.integer(ObjectTrackID))
   }
@@ -64,6 +26,28 @@ fetch_syn_csv <- function(syn_id) {
   if (has_name(df, "YCoordinate")) {
     df <- df %>% mutate(YCoordinate = as.numeric(YCoordinate))
   }
+  if (has_name(df, c("ROW_ID", "ROW_VERSION"))) {
+      df <- df %>% select(-ROW_ID, -ROW_VERSION)
+  }
+  return(as_tibble(df))
+}
+
+fetch_syn_table <- function(syn_id, cols = "*") {
+  if (is.vector(cols)) {
+    cols <- paste(cols, collapse = ",")
+  }
+  table <- synTableQuery(paste("select", cols, "from", syn_id))
+  table_df <- table$asDataFrame() %>%
+    as_tibble() %>%
+    correct_types()
+  return(table_df)
+}
+
+fetch_syn_csv <- function(syn_id) {
+  f <- synGet(syn_id)
+  df <- read_csv(f$path) %>%
+    as_tibble() %>%
+    correct_types()
   return(df)
 }
 
@@ -72,15 +56,14 @@ get_corrected_indices <- function() {
   corrected_lincs <- fetch_syn_table("syn17096732")
   corrected_sod <- fetch_syn_table("syn17933845")
   corrected_indices <- bind_rows(corrected_abc, corrected_lincs, corrected_sod) %>%
-    #select(Experiment, ObjectTrackID, Well, TimePoint, Live_Cells, Lost_Tracking) %>%
     mutate(Live_Cells = as.logical(Live_Cells),
            Lost_Tracking = as.logical(Lost_Tracking))
   return(corrected_indices)
 }
 
-fill_in_missing_timepoints <- function(curated_cell_data) {
+fill_in_missing_timepoints <- function(curated_cell_data, reference="syn11817859") {
   timepoint_reference <- fetch_syn_table(
-    "syn11817859", c("Experiment", "TimePointBegin", "TimePointEnd")) %>%
+    reference, c("Experiment", "TimePointBegin", "TimePointEnd")) %>%
     select(Experiment, TimePointBegin, TimePointEnd)
   tidy_timepoint_reference <- timepoint_reference %>%
     purrr::pmap_dfr(function(Experiment, TimePointBegin, TimePointEnd) {
