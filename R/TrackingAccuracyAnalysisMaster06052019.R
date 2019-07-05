@@ -20,6 +20,9 @@ library(synapser)
 
 rm(list=ls())
 synapser::synLogin()
+SYNAPSE_OUTPUT = "syn20357507"
+THIS_SCRIPT = paste0("https://github.com/philerooski/neurolincsdreamchallenge-1/",
+                     "blob/master/R/TrackingAccuracyAnalysisMaster06052019.R")
 ################################################
 #import most recent curation data###############
 ################################################
@@ -28,6 +31,12 @@ read_syn_csv <- function(synapse_id) {
     f <- synapser::synGet(synapse_id)
     df <- readr::read_csv(f$path)
     return(df)
+}
+
+csv_to_synapse <- function(fname, used=NULL) {
+  f <- synapser::File(fname, parent=SYNAPSE_OUTPUT)
+  synStore(f, used=used, executed=THIS_SCRIPT)
+  unlink(fname)
 }
 
 trackingResults= read_syn_csv("syn18411380")
@@ -117,7 +126,10 @@ MergeFeaturesManualCuration=merge(refinedfeaturesmerge, TracksShortened, by="Pla
 
 
 ##Writeout Features and Curation
-write.csv(MergeFeaturesManualCuration, "ManualCurationFeatures.csv") # syn18914552
+write.csv(MergeFeaturesManualCuration, "ManualCurationFeatures.csv") # originally syn18914552
+csv_to_synapse("ManualCurationFeatures.csv", used=list(
+  "syn18411380", "syn18879697", "syn18879698", "syn18879696", "syn18879699",
+  "syn18914415", "syn18879700", "syn18914422", "syn18914424", "syn18411380"))
 
 
 ######################################################################################
@@ -178,15 +190,18 @@ HRsurvMerge3=merge(HRsurvMerge2,HRsurvProximity, by= "Plate_Object_Well")
 HRsurvMerge4=merge(HRsurvMerge3,HRsurvOverlap, by= "Plate_Object_Well")
 
 ###writeout Combined Survival
-write.csv(HRsurvMerge4, "CombinedSurvivalComparison.csv") # syn18914533
+write.csv(HRsurvMerge4, "CombinedSurvivalComparison.csv") # originally syn18914533
+csv_to_synapse("CombinedSurvivalComparison.csv", used=list(
+  "syn18914439", "syn18914432", "syn18914431", "syn18914433", "syn18914434",
+  "syn18914435", "syn18914437", "syn18914440", "syn18411380"))
 
 MergeFeaturesManualCurationT0=subset(MergeFeaturesManualCuration,MergeFeaturesManualCuration$Timepoint==0)
 colnames(MergeFeaturesManualCurationT0)[colnames(MergeFeaturesManualCurationT0)=='Plate_Object_Well.x']<-"Plate_Object_Well"
 MergeFeaturesManualCuration2=merge(MergeFeaturesManualCurationT0, HRsurvMerge4, by="Plate_Object_Well")
 
 ###writeout Survival and Features
-write.csv(MergeFeaturesManualCuration2, "CombinedSurvivalandFeatures.csv") # syn18914524
-
+write.csv(MergeFeaturesManualCuration2, "CombinedSurvivalandFeatures.csv") # originally syn18914524
+csv_to_synapse("CombinedSurvivalandFeatures.csv", used=list("syn20357678", "syn20357683"))
 
 ######################################################################################
 ###Import and combine  tracking algorithm data with Curation data, then score##############
@@ -300,8 +315,10 @@ names(masterYoungTracksShort)[names(masterYoungTracksShort)=='Plate_Object_Well'
 masterYoungTracksShortOutput=masterYoungTracksShort
 masterYoungTracksShortOutput=masterYoungTracksShortOutput[,c("ObjectTrackID.Young","Plate_Object_Well_Time")]
 masterYoungTracksShortOutput=separate(data=masterYoungTracksShortOutput, col ="Plate_Object_Well_Time", into = c('Experiment', 'Object', 'Well', 'Time'), sep = "_")
-write.csv(masterYoungTracksShortOutput, "RawVeronoitrackingData.csv") # syn18914555
-
+write.csv(masterYoungTracksShortOutput, "RawVeronoitrackingData.csv") # originally syn18914555
+csv_to_synapse("RawVeronoitrackingData.csv", used=list(
+  "syn18914441", "syn18914442", "syn18914443", "syn18914444", "syn18914445",
+  "syn18914446", "syn18914447", "syn18914448", "syn18411380"))
 
 
 
@@ -596,8 +613,10 @@ masterOLsurvShort=masterOLsurvShort[!duplicated(masterOLsurvShort$Plate_Object_W
 masterOLsurvShortOutput=masterOLsurvShort
 masterOLsurvShortOutput=masterOLsurv2[,c("ObjectLabelsFound_OL","Plate_Object_Well_Time")]
 masterOLsurvShortOutput=separate(data=masterOLsurvShortOutput,col ="Plate_Object_Well_Time", into = c('Experiment','Object','Well','Time'), sep="_" )
-write.csv(masterOLsurvShortOutput, "RawOverlapTrackingData.csv") # syn18914553
-
+write.csv(masterOLsurvShortOutput, "RawOverlapTrackingData.csv") # originally syn18914553
+csv_to_synapse("RawOverlapTrackingData.csv", used=list(
+  "syn18914368", "syn18914371", "syn18914375", "syn18914369", "syn18914378",
+  "syn18914381", "syn18914386", "syn18914389", "syn18411380"))
 
 ##Merge Overlap tracking and Manual Curation
 masterOLsurvMerged=merge(masterOLsurvShort,TracksShortened, by="Plate_Object_Well_Time", all=TRUE)
@@ -834,9 +853,10 @@ masterPrsurvShortOutput=separate(data=masterPrsurvShortOutput, col ="Plate_Objec
 
 
 ###writeout Raw Combined Overlap Tracking
-write.csv(masterPrsurvShortOutput, "RawProximityTrackingData.csv") # syn18914554
-
-
+write.csv(masterPrsurvShortOutput, "RawProximityTrackingData.csv") # originally syn18914554
+csv_to_synapse("RawProximityTrackingData.csv", used=list(
+  "syn18914391", "syn18914393", "syn18914390", "syn18914394", "syn18914395",
+  "syn18914396", "syn18914397", "syn18914399", "syn18411380"))
 
 #Merge all Young's tracks for which Human Curation is available
 masterPrsurvMerged=merge(masterPrsurvShort,TracksShortened, by="Plate_Object_Well_Time", all=TRUE)
@@ -1013,5 +1033,7 @@ ALLPERWELLTRACKING=merge(ALLPERWELLTRACKING,YoungTracksStats2,by="Plate_Well")
 ALLPERWELLTRACKING=separate(data=ALLPERWELLTRACKING,col=Plate_Well,into=c('Plate','Well'), sep="_")
 
 
-write.csv(ALLPERWELLTRACKING, "ALLPERWELLTRACKINGDataDEATHFILTER.csv") # syn18914491
+write.csv(ALLPERWELLTRACKING, "ALLPERWELLTRACKINGDataDEATHFILTER.csv") # originally syn18914491
+csv_to_synapse("ALLPERWELLTRACKINGDataDEATHFILTER.csv",
+               used=list("syn20357771", "syn20357774", "syn20357716"))
 
