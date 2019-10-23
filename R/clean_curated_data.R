@@ -1,10 +1,16 @@
-#!/usr/bin/env Rscript 
+#!/usr/bin/env Rscript
 # Produce a "clean" curated cell file with all potential timepoints
 # present and correct values for Live_Cells and Lost_Tracking columns
 
 library(synapser)
 library(tidyverse)
 
+#' Ensure that a dataframe has certain column data types
+#'
+#' @param df A data.frame with zero or more of columns ObjectTrackID,
+#' TimePoint, Live_Cells, Mistracked, Lost_Tracking, Out_of_Focus,
+#' XCoordinate, YCoordinate, ROW_ID, or ROW_VERSION
+#' @return data.frame with correct data types
 correct_types <- function(df) {
   if (has_name(df, "ObjectTrackID")) {
     df <- df %>% mutate(ObjectTrackID = as.integer(ObjectTrackID))
@@ -101,7 +107,7 @@ fill_in_missing_timepoints <- function(curated_cell_data, reference="syn11817859
 
 #' Fill in columns Live_Cells and Lost_Tracking
 #'
-#' @param curated_cell_data_all_timepoints The output from 
+#' @param curated_cell_data_all_timepoints The output from
 #' \code{fill_in_missing_timepoints}
 #' @return A "clean" curated cell data.frame
 fill_in_missing_labels <- function(curated_cell_data_all_timepoints) {
