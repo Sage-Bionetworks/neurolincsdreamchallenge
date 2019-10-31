@@ -8,7 +8,7 @@ baseCommand: python3
 
 hints:
   DockerRequirement:
-    dockerPull: sagebionetworks/synapsepythonclient:v1.9.2
+    dockerPull: sagebionetworks/synapsepythonclient:latest
 
 inputs:
   - id: submissionid
@@ -80,10 +80,11 @@ requirements:
                                "https://synapse.org/#!Synapse:{}".format(
                                  scoring_results["results_per_object"]),
                                "\n\nSincerely,\nNeurolincs Administrator"]
+              messageBody = "".join(message)
               syn.sendMessage(
                 userIds=[user_id],
                 messageSubject=subject,
-                messageBody="".join(message),
+                messageBody=messageBody,
                 contentType="text/html")
 
           def main():
