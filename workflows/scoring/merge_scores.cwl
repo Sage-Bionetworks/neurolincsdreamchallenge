@@ -33,7 +33,7 @@ requirements:
     listing:
       - entryname: merge_scores.py
         entry: |
-            #!/usr/bin/env python
+            #!/usr/bin/env python3
             import argparse
             import json
             

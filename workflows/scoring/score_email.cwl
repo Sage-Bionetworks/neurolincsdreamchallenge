@@ -8,7 +8,7 @@ baseCommand: python3
 
 hints:
   DockerRequirement:
-    dockerPull: sagebionetworks/synapsepythonclient:v1.9.2
+    dockerPull: sagebionetworks/synapsepythonclient:latest
 
 inputs:
   - id: submissionid
@@ -33,7 +33,7 @@ requirements:
     listing:
       - entryname: score_email.py
         entry: |
-          #!/usr/bin/env python
+          #!/usr/bin/env python3
           import synapseclient
           import argparse
           import json

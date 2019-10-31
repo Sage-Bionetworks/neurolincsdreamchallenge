@@ -28,7 +28,7 @@ requirements:
     listing:
       - entryname: download_synapse_file.py
         entry: |
-          #!/usr/bin/env python
+          #!/usr/bin/env python3
           import synapseclient
           import argparse
           import os
