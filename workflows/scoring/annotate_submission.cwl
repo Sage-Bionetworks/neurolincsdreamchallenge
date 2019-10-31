@@ -44,7 +44,7 @@ requirements:
     listing:
       - entryname: annotationSubmission.py
         entry: |
-          #!/usr/bin/env python
+          #!/usr/bin/env python3
           import synapseclient as sc
           import argparse
           import json
