@@ -84,8 +84,8 @@ requirements:
               syn.sendMessage(
                 userIds=[user_id],
                 messageSubject=subject,
-                messageBody=messageBody,
-                contentType="text/html")
+                messageBody="".join(message),
+                contentType="text/plain")
 
           def main():
               args = read_args()
