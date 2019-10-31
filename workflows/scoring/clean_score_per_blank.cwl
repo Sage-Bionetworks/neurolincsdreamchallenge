@@ -29,7 +29,7 @@ requirements:
     listing:
       - entryname: clean_score_per_blank.py
         entry: |
-            #!/usr/bin/env python
+            #!/usr/bin/env python3
             import pandas as pd
             import argparse
             import json
