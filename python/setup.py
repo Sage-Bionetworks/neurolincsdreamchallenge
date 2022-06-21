@@ -17,7 +17,7 @@ setup(name='neurolincsdreamchallenge',
       packages=['neurolincsdreamchallenge'],
       install_requires=[
           'pandas',
-          'numpy==1.15.4',
+          'numpy==1.22.0',
           'synapseclient',
           'scikit-image'
       ],
